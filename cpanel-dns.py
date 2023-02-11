@@ -19,11 +19,12 @@ CPANEL_URI = os.environ.get("CPANEL_DNS_CPANEL_URI", "https://cpanel.example.com
 CPANEL_AUTH_USERNAME = os.environ.get("CPANEL_DNS_CPANEL_AUTH_USERNAME", "username")
 CPANEL_AUTH_PASSWORD = os.environ.get("CPANEL_DNS_CPANEL_AUTH_PASSWORD", "password")
 # If CPANEL_AUTH_PASSWORD is a cPanel API token, set this to "token".
-CPANEL_AUTH_METHOD = os.environ.get("CPANEL_DNS_CPANEL_AUTH_METHOD", "password")
+CPANEL_AUTH_METHOD = os.environ.get("CPANEL_DNS_CPANEL_AUTH_METHOD", "token")
 
 # Adjust based on the performance of your DNS cluster
 CPANEL_BIND_DELAY = int(os.environ.get("CPANEL_DNS_CPANEL_DELAY", "15"))
 
+CERT_LIVE_DIR = os.environ.get("RENEWED_LINEAGE", "/etc/letsencrypt/live/example.com")
 
 class APITokenAuth(AuthBase):
 
@@ -52,11 +53,6 @@ def cpapi2_request(module, function, data=None):
     }
     url = "{}/json-api/cpanel?{}".format(CPANEL_URI, urlencode(params))
 
-    return cpanel_post(url, data)
-
-
-def cpuapi_request(module, function, data=None):
-    url = f"{CPANEL_URI}/execute/{module}/{function}"
     return cpanel_post(url, data)
 
 
@@ -143,16 +139,14 @@ def get_certbot_file_contents(cert_live_dir, filename):
         return f.read()
 
 
-def install_certificate(cert_live_dir, domain):
+def combine_certificate(cert_live_dir, domain):
     data = {
-        "domain": domain,
         "cert": get_certbot_file_contents(cert_live_dir, "cert.pem"),
         "key": get_certbot_file_contents(cert_live_dir, "privkey.pem"),
-        "cabundle": get_certbot_file_contents(cert_live_dir, "chain.pem"),
     }
 
-    req = cpuapi_request("SSL", "install_ssl", data)
-    print(req["messages"])
+    with open(f"/etc/ssl/private/{domain}.pem", "w") as f:
+        f.write(f"{data["key"]}\n{data["cert"]}")
 
 
 if __name__ == "__main__":
@@ -163,20 +157,15 @@ if __name__ == "__main__":
     elif act == "delete":
         remove_record(os.environ["CERTBOT_DOMAIN"], os.environ["CERTBOT_VALIDATION"])
     elif act == "install":
-        if not "RENEWED_LINEAGE" in os.environ:
-            exit("Set the RENEWED_LINEAGE env var to the renewed cert's live "
-                 "directory (example: '/etc/letsencrypt/live/example.com').")
-
-        cert_live_dir = os.environ["RENEWED_LINEAGE"]
         if len(sys.argv) > 2:
             # Read the domain name from the command line
             domain = sys.argv[2].strip()
         else:
             # Autodetect the domain from the certificate lineage path:
-            domain = os.path.basename(os.path.normpath(cert_live_dir))
+            domain = os.path.basename(os.path.normpath(CERT_LIVE_DIR))
 
-        print(f"Installing certificate for cPanel domain: {domain}")
-        install_certificate(cert_live_dir, domain)
+        print(f"Combining certificate for domain: {domain}")
+        combine_certificate(cert_live_dir, domain)
     else:
         print("Unknown action: {}".format(act))
         exit(1)
