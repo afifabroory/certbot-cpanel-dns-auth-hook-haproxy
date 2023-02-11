@@ -4,6 +4,7 @@ import requests
 from requests.auth import HTTPBasicAuth, AuthBase
 import sys
 import os
+from subprocess import run as run_command
 from time import sleep
 
 try:
@@ -147,6 +148,11 @@ def combine_certificate(cert_live_dir, domain):
 
     with open(f"/etc/ssl/private/{domain}.pem", "w") as f:
         f.write(f"{data["key"]}\n{data["cert"]}")
+
+
+def restart_haproxy_service():
+    try:
+        run_command(["/bin/systemctl", "restart", "haproxy.service"])
 
 
 if __name__ == "__main__":
