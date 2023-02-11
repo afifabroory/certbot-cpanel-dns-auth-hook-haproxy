@@ -147,7 +147,7 @@ def combine_certificate(cert_live_dir, domain):
     }
 
     with open(f"/etc/ssl/private/{domain}.pem", "w") as f:
-        f.write(f"{data["key"]}\n{data["cert"]}")
+        f.write(f"{data['key']}\n{data['cert']}")
 
 
 def restart_haproxy_service():
