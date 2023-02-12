@@ -151,8 +151,7 @@ def combine_certificate(cert_live_dir, domain):
 
 
 def restart_haproxy_service():
-    try:
-        run_command(["/bin/systemctl", "restart", "haproxy.service"])
+    run_command(["/bin/systemctl", "restart", "haproxy.service"])
 
 
 if __name__ == "__main__":
@@ -172,6 +171,7 @@ if __name__ == "__main__":
 
         print(f"Combining certificate for domain: {domain}")
         combine_certificate(cert_live_dir, domain)
+        restart_haproxy_service()
     else:
         print("Unknown action: {}".format(act))
         exit(1)
